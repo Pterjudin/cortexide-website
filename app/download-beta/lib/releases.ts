@@ -28,7 +28,7 @@ const REQUIRED_ASSETS = [
 let cachedVersion: string | null = null;
 let cachedLinks: DownloadLinks | null = null;
 let lastChecked = 0;
-const TTL = 15 * 60 * 1000;
+const TTL = process.env.NODE_ENV === 'development' ? 60 * 1000 : 15 * 60 * 1000; // 1 min in dev, 15 min in prod
 
 const FALLBACK_LINUX_OPTION: LinuxOption = {
     id: 'linux-appimage-fallback',
@@ -135,9 +135,11 @@ const createDefaultLinks = (version: string): DownloadLinks => {
     };
 };
 
-export async function getLatestRelease(): Promise<{ version: string; links: DownloadLinks }> {
+export async function getLatestRelease(forceRefresh = false): Promise<{ version: string; links: DownloadLinks }> {
     const now = Date.now();
-    if (cachedVersion && now - lastChecked < TTL) {
+    // Allow bypassing cache via forceRefresh or environment variable
+    const shouldBypassCache = forceRefresh || process.env.FORCE_REFRESH_DOWNLOADS === 'true';
+    if (!shouldBypassCache && cachedVersion && now - lastChecked < TTL) {
         return { version: cachedVersion, links: cachedLinks ?? createDefaultLinks(cachedVersion) };
     }
 
@@ -146,10 +148,16 @@ export async function getLatestRelease(): Promise<{ version: string; links: Down
         if (process.env.GITHUB_TOKEN) {
             headers['Authorization'] = `token ${process.env.GITHUB_TOKEN}`;
         }
-        const response = await fetch('https://api.github.com/repos/OpenCortexIDE/cortexide-binaries/releases/latest', {
-            next: { revalidate: TTL / 1000 },
+        // Use cache: 'no-store' if forcing refresh, otherwise use revalidation
+        const fetchOptions: RequestInit & { next?: { revalidate: number } } = {
             headers,
-        });
+        };
+        if (shouldBypassCache) {
+            fetchOptions.cache = 'no-store';
+        } else {
+            fetchOptions.next = { revalidate: TTL / 1000 };
+        }
+        const response = await fetch('https://api.github.com/repos/OpenCortexIDE/cortexide-binaries/releases/latest', fetchOptions);
 
         if (response.ok) {
             const data = await response.json();
@@ -165,32 +173,60 @@ export async function getLatestRelease(): Promise<{ version: string; links: Down
                 });
             }
 
-            const pick = (regex: RegExp): string | undefined => {
+            // Improved pick function that prefers exact matches and logs for debugging
+            const pick = (regex: RegExp, exactName?: string): string | undefined => {
+                // First try exact name match if provided
+                if (exactName) {
+                    const exact = assets.find(a => a.name === exactName);
+                    if (exact?.browser_download_url) {
+                        return exact.browser_download_url;
+                    }
+                }
+                // Then try regex match
                 const found = assets.find(a => regex.test(a.name));
+                if (found && process.env.NODE_ENV === 'development') {
+                    console.log(`[Download] Matched asset: ${found.name} with pattern: ${regex}`);
+                }
                 return found?.browser_download_url;
             };
 
+            // Try to find exact asset names first, then fall back to patterns
+            const exactMacIntel = `CortexIDE.x64.${normalized}.dmg`;
+            const exactMacArm = `CortexIDE.arm64.${normalized}.dmg`;
+            const exactWinX64 = `CortexIDESetup-x64-${normalized}.exe`;
+            const exactWinArm = `CortexIDESetup-arm64-${normalized}.exe`;
+
             const links: DownloadLinks = {
                 windows: {
-                    x64: pick(/^VoidSetup-x64-.*\.exe$/i)
-                        ?? pick(/^CortexIDE.*x64.*\.exe$/i)
+                    x64: pick(/^VoidSetup-x64-.*\.exe$/i, `VoidSetup-x64-${normalized}.exe`)
+                        ?? pick(/^CortexIDESetup-x64-.*\.exe$/i, exactWinX64)
                         ?? `https://github.com/OpenCortexIDE/cortexide-binaries/releases/download/${version}/CortexIDESetup-x64-${normalized}.exe`,
-                    arm: pick(/^VoidSetup-arm64-.*\.exe$/i)
-                        ?? pick(/^CortexIDE.*arm64.*\.exe$/i)
+                    arm: pick(/^VoidSetup-arm64-.*\.exe$/i, `VoidSetup-arm64-${normalized}.exe`)
+                        ?? pick(/^CortexIDESetup-arm64-.*\.exe$/i, exactWinArm)
                         ?? `https://github.com/OpenCortexIDE/cortexide-binaries/releases/download/${version}/CortexIDESetup-arm64-${normalized}.exe`,
                 },
                 mac: {
-                    intel: pick(/^Void\.x64\..*\.dmg$/i)
-                        ?? pick(/^CortexIDE\.x64\..*\.dmg$/i)
+                    intel: pick(/^Void\.x64\..*\.dmg$/i, `Void.x64.${normalized}.dmg`)
+                        ?? pick(/^CortexIDE\.x64\..*\.dmg$/i, exactMacIntel)
                         ?? pick(/darwin-x64.*\.dmg$/i)
                         ?? `https://github.com/OpenCortexIDE/cortexide-binaries/releases/download/${version}/CortexIDE.x64.${normalized}.dmg`,
-                    appleSilicon: pick(/^Void\.arm64\..*\.dmg$/i)
-                        ?? pick(/^CortexIDE\.arm64\..*\.dmg$/i)
+                    appleSilicon: pick(/^Void\.arm64\..*\.dmg$/i, `Void.arm64.${normalized}.dmg`)
+                        ?? pick(/^CortexIDE\.arm64\..*\.dmg$/i, exactMacArm)
                         ?? pick(/darwin-arm64.*\.dmg$/i)
                         ?? `https://github.com/OpenCortexIDE/cortexide-binaries/releases/download/${version}/CortexIDE.arm64.${normalized}.dmg`,
                 },
                 linux: linuxOptions,
             };
+
+            // Log selected links in development for debugging
+            if (process.env.NODE_ENV === 'development') {
+                console.log('[Download] Selected links:', {
+                    macIntel: links.mac.intel,
+                    macArm: links.mac.appleSilicon,
+                    winX64: links.windows.x64,
+                    winArm: links.windows.arm,
+                });
+            }
 
             cachedVersion = version;
             cachedLinks = links;
