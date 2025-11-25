@@ -190,28 +190,29 @@ export async function getLatestRelease(forceRefresh = false): Promise<{ version:
                 return found?.browser_download_url;
             };
 
-            // Try to find exact asset names first, then fall back to patterns
-            const exactMacIntel = `CortexIDE.x64.${normalized}.dmg`;
-            const exactMacArm = `CortexIDE.arm64.${normalized}.dmg`;
-            const exactWinX64 = `CortexIDESetup-x64-${normalized}.exe`;
-            const exactWinArm = `CortexIDESetup-arm64-${normalized}.exe`;
-
+            // Try to find assets using regex patterns that support BUILD_ID suffix
+            // BUILD_ID format: -{commitHash}-{timestamp} (e.g., -668f686-20251125-212944)
+            // The regex patterns with .* will match files with or without BUILD_ID
             const links: DownloadLinks = {
                 windows: {
-                    x64: pick(/^VoidSetup-x64-.*\.exe$/i, `VoidSetup-x64-${normalized}.exe`)
-                        ?? pick(/^CortexIDESetup-x64-.*\.exe$/i, exactWinX64)
+                    // Match: CortexIDESetup-x64-1.106.00002.exe or CortexIDESetup-x64-1.106.00002-668f686-20251125-212944.exe
+                    x64: pick(/^VoidSetup-x64-.*\.exe$/i)
+                        ?? pick(/^CortexIDESetup-x64-.*\.exe$/i)
                         ?? `https://github.com/OpenCortexIDE/cortexide-binaries/releases/download/${version}/CortexIDESetup-x64-${normalized}.exe`,
-                    arm: pick(/^VoidSetup-arm64-.*\.exe$/i, `VoidSetup-arm64-${normalized}.exe`)
-                        ?? pick(/^CortexIDESetup-arm64-.*\.exe$/i, exactWinArm)
+                    // Match: CortexIDESetup-arm64-1.106.00002.exe or CortexIDESetup-arm64-1.106.00002-668f686-20251125-212944.exe
+                    arm: pick(/^VoidSetup-arm64-.*\.exe$/i)
+                        ?? pick(/^CortexIDESetup-arm64-.*\.exe$/i)
                         ?? `https://github.com/OpenCortexIDE/cortexide-binaries/releases/download/${version}/CortexIDESetup-arm64-${normalized}.exe`,
                 },
                 mac: {
-                    intel: pick(/^Void\.x64\..*\.dmg$/i, `Void.x64.${normalized}.dmg`)
-                        ?? pick(/^CortexIDE\.x64\..*\.dmg$/i, exactMacIntel)
+                    // Match: CortexIDE.x64.1.106.00002.dmg or CortexIDE.x64.1.106.00002-668f686-20251125-212944.dmg
+                    intel: pick(/^Void\.x64\..*\.dmg$/i)
+                        ?? pick(/^CortexIDE\.x64\..*\.dmg$/i)
                         ?? pick(/darwin-x64.*\.dmg$/i)
                         ?? `https://github.com/OpenCortexIDE/cortexide-binaries/releases/download/${version}/CortexIDE.x64.${normalized}.dmg`,
-                    appleSilicon: pick(/^Void\.arm64\..*\.dmg$/i, `Void.arm64.${normalized}.dmg`)
-                        ?? pick(/^CortexIDE\.arm64\..*\.dmg$/i, exactMacArm)
+                    // Match: CortexIDE.arm64.1.106.00002.dmg or CortexIDE.arm64.1.106.00002-668f686-20251125-212944.dmg
+                    appleSilicon: pick(/^Void\.arm64\..*\.dmg$/i)
+                        ?? pick(/^CortexIDE\.arm64\..*\.dmg$/i)
                         ?? pick(/darwin-arm64.*\.dmg$/i)
                         ?? `https://github.com/OpenCortexIDE/cortexide-binaries/releases/download/${version}/CortexIDE.arm64.${normalized}.dmg`,
                 },
