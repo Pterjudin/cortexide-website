@@ -173,7 +173,14 @@ export async function getLatestRelease(forceRefresh = false): Promise<{ version:
                 });
             }
 
-            // Improved pick function that prefers exact matches and logs for debugging
+            // Extract BUILD_ID timestamp from filename for sorting
+            // BUILD_ID format: -{commitHash}-{timestamp} where timestamp is YYYYMMDD-HHMMSS
+            const extractBuildTimestamp = (filename: string): string | null => {
+                const match = filename.match(/-([a-f0-9]+)-(\d{8}-\d{6})/);
+                return match ? match[2] : null; // Return timestamp part (YYYYMMDD-HHMMSS)
+            };
+
+            // Improved pick function that prefers latest BUILD_ID
             const pick = (regex: RegExp, exactName?: string): string | undefined => {
                 // First try exact name match if provided
                 if (exactName) {
@@ -182,8 +189,29 @@ export async function getLatestRelease(forceRefresh = false): Promise<{ version:
                         return exact.browser_download_url;
                     }
                 }
-                // Then try regex match
-                const found = assets.find(a => regex.test(a.name));
+                // Find ALL matching assets (not just the first)
+                const matching = assets.filter(a => regex.test(a.name));
+                if (matching.length === 0) {
+                    return undefined;
+                }
+                
+                // If multiple matches, prefer the one with the latest BUILD_ID timestamp
+                if (matching.length > 1) {
+                    matching.sort((a, b) => {
+                        const timestampA = extractBuildTimestamp(a.name);
+                        const timestampB = extractBuildTimestamp(b.name);
+                        
+                        // Assets with BUILD_ID come first (newer)
+                        if (timestampA && !timestampB) return -1;
+                        if (!timestampA && timestampB) return 1;
+                        if (!timestampA && !timestampB) return 0; // Both without BUILD_ID, keep original order
+                        
+                        // Both have BUILD_ID, sort by timestamp (descending = newest first)
+                        return timestampB!.localeCompare(timestampA!);
+                    });
+                }
+                
+                const found = matching[0];
                 if (found && process.env.NODE_ENV === 'development') {
                     console.log(`[Download] Matched asset: ${found.name} with pattern: ${regex}`);
                 }
