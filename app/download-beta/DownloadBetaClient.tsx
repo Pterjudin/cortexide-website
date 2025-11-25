@@ -80,14 +80,15 @@ const FALLBACK_LINUX_APPIMAGE_URL =
     'https://github.com/OpenCortexIDE/cortexide-binaries/releases/download/1.99.30001/CortexIDE-1.99.30001.glibc2.29-x86_64.AppImage';
 
 export default function DownloadBetaClient({ releaseVersion, links }: { releaseVersion: string, links?: DownloadLinks }) {
+    // Use provided links or create empty structure (no fallback URLs to non-existent files)
     const downloadLinks: DownloadLinks = links ?? {
         windows: {
-            x64: `https://github.com/OpenCortexIDE/cortexide-binaries/releases/download/${releaseVersion}/CortexIDESetup-x64-${releaseVersion}.exe`,
-            arm: `https://github.com/OpenCortexIDE/cortexide-binaries/releases/download/${releaseVersion}/CortexIDESetup-arm64-${releaseVersion}.exe`,
+            x64: undefined,
+            arm: undefined,
         },
         mac: {
-            intel: `https://github.com/OpenCortexIDE/cortexide-binaries/releases/download/${releaseVersion}/CortexIDE.x64.${releaseVersion}.dmg`,
-            appleSilicon: `https://github.com/OpenCortexIDE/cortexide-binaries/releases/download/${releaseVersion}/CortexIDE.arm64.${releaseVersion}.dmg`,
+            intel: undefined,
+            appleSilicon: undefined,
         },
         linux: [
             {
@@ -116,59 +117,67 @@ export default function DownloadBetaClient({ releaseVersion, links }: { releaseV
                     </div>
 
                     <div className='px-4 max-sm:scale-75 max-[450px]:scale-50 space-y-2'>
-                        <div className='flex items-center gap-x-2'>
-                            <DownloadButton 
-                                url={downloadLinks.mac.appleSilicon} 
-                                className='relative w-full'
-                                platform='mac'
-                                arch='arm64'
-                            >
-                                <SparkleOverlay number={25} seed={42} />
-                                <span className='flex items-center gap-2'>
-                                    <span className='text-white text-xl font-medium'>Download for Mac</span>
-                                    <FaApple className='fill-white min-w-7 min-h-7' />
-                                </span>
-                            </DownloadButton>
-                            <DownloadButton 
-                                url={downloadLinks.mac.intel} 
-                                className='relative flex-grow-0 flex-shrink-0 w-40'
-                                platform='mac'
-                                arch='x64'
-                            >
-                                <SparkleOverlay number={15} seed={501} />
-                                <span className='flex items-center gap-2'>
-                                    <span className='text-white text-xl font-medium'>Intel</span>
-                                    <FaApple className='fill-white min-w-7 min-h-7' />
-                                </span>
-                            </DownloadButton>
-                        </div>
+                        {downloadLinks.mac.appleSilicon && (
+                            <div className='flex items-center gap-x-2'>
+                                <DownloadButton 
+                                    url={downloadLinks.mac.appleSilicon} 
+                                    className='relative w-full'
+                                    platform='mac'
+                                    arch='arm64'
+                                >
+                                    <SparkleOverlay number={25} seed={42} />
+                                    <span className='flex items-center gap-2'>
+                                        <span className='text-white text-xl font-medium'>Download for Mac</span>
+                                        <FaApple className='fill-white min-w-7 min-h-7' />
+                                    </span>
+                                </DownloadButton>
+                                {downloadLinks.mac.intel && (
+                                    <DownloadButton 
+                                        url={downloadLinks.mac.intel} 
+                                        className='relative flex-grow-0 flex-shrink-0 w-40'
+                                        platform='mac'
+                                        arch='x64'
+                                    >
+                                        <SparkleOverlay number={15} seed={501} />
+                                        <span className='flex items-center gap-2'>
+                                            <span className='text-white text-xl font-medium'>Intel</span>
+                                            <FaApple className='fill-white min-w-7 min-h-7' />
+                                        </span>
+                                    </DownloadButton>
+                                )}
+                            </div>
+                        )}
 
-                        <div className='flex items-center gap-x-2'>
-                            <DownloadButton 
-                                url={downloadLinks.windows.x64} 
-                                className='relative w-full'
-                                platform='windows'
-                                arch='x64'
-                            >
-                                <SparkleOverlay number={25} seed={43} />
-                                <span className='flex items-center gap-2'>
-                                    <span className='text-white text-xl font-medium'>Download for Windows</span>
-                                    <FaWindows className='fill-white min-w-7 min-h-7' />
-                                </span>
-                            </DownloadButton>
-                            <DownloadButton 
-                                url={downloadLinks.windows.arm} 
-                                className='relative flex-grow-0 flex-shrink-0 w-40'
-                                platform='windows'
-                                arch='arm64'
-                            >
-                                <SparkleOverlay number={15} seed={100} />
-                                <span className='flex items-center gap-2'>
-                                    <span className='text-white text-xl font-medium'>ARM</span>
-                                    <FaWindows className='fill-white min-w-7 min-h-7' />
-                                </span>
-                            </DownloadButton>
-                        </div>
+                        {downloadLinks.windows.x64 && (
+                            <div className='flex items-center gap-x-2'>
+                                <DownloadButton 
+                                    url={downloadLinks.windows.x64} 
+                                    className='relative w-full'
+                                    platform='windows'
+                                    arch='x64'
+                                >
+                                    <SparkleOverlay number={25} seed={43} />
+                                    <span className='flex items-center gap-2'>
+                                        <span className='text-white text-xl font-medium'>Download for Windows</span>
+                                        <FaWindows className='fill-white min-w-7 min-h-7' />
+                                    </span>
+                                </DownloadButton>
+                                {downloadLinks.windows.arm && (
+                                    <DownloadButton 
+                                        url={downloadLinks.windows.arm} 
+                                        className='relative flex-grow-0 flex-shrink-0 w-40'
+                                        platform='windows'
+                                        arch='arm64'
+                                    >
+                                        <SparkleOverlay number={15} seed={100} />
+                                        <span className='flex items-center gap-2'>
+                                            <span className='text-white text-xl font-medium'>ARM</span>
+                                            <FaWindows className='fill-white min-w-7 min-h-7' />
+                                        </span>
+                                    </DownloadButton>
+                                )}
+                            </div>
+                        )}
 
                         <div className='flex flex-col gap-3 w-full'>
                             <DownloadButton 
