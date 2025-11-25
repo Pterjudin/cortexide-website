@@ -7,6 +7,7 @@ import './twinkle.css'
 import Image from 'next/image';
 import SparkleOverlay from './SparkleOverlay';
 import posthog from 'posthog-js';
+import type { DownloadLinks } from './lib/releases';
 
 // Floating Element
 const FloatingElement = () => (
@@ -39,12 +40,13 @@ const FloatingElement = () => (
 
 // Download button with tracking
 const DownloadButton = ({ url, children, className, platform, arch }: { 
-    url: string; 
+    url: string | undefined; 
     children: React.ReactNode; 
     className?: string;
     platform?: string;
     arch?: string;
 }) => {
+    if (!url) return null;
     const handleClick = () => {
         if (typeof window !== 'undefined' && posthog) {
             posthog.capture('DownloadFile', {
@@ -70,12 +72,6 @@ const DownloadButton = ({ url, children, className, platform, arch }: {
 };
 
 // Actual page content (Client Component with data hydration)
-type DownloadLinks = {
-    windows: { x64: string; arm: string };
-    mac: { intel: string; appleSilicon: string };
-    linux: Array<{ id: string; label: string; url: string }>;
-};
-
 const FALLBACK_LINUX_APPIMAGE_URL =
     'https://github.com/OpenCortexIDE/cortexide-binaries/releases/download/1.99.30001/CortexIDE-1.99.30001.glibc2.29-x86_64.AppImage';
 
