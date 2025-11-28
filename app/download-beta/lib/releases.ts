@@ -28,7 +28,7 @@ const REQUIRED_ASSETS = [
 let cachedVersion: string | null = null;
 let cachedLinks: DownloadLinks | null = null;
 let lastChecked = 0;
-const TTL = process.env.NODE_ENV === 'development' ? 60 * 1000 : 15 * 60 * 1000; // 1 min in dev, 15 min in prod
+const TTL = process.env.NODE_ENV === 'development' ? 60 * 1000 : 2 * 60 * 1000; // 1 min in dev, 2 min in prod
 
 const FALLBACK_LINUX_OPTION: LinuxOption = {
     id: 'linux-appimage-fallback',
