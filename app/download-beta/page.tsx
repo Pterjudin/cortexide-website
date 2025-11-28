@@ -26,8 +26,12 @@ export const metadata = {
   },
 };
 
+// Disable Next.js caching for this page to always fetch fresh release data
+export const revalidate = 0;
+export const dynamic = 'force-dynamic';
+
 export default async function DownloadBetaPage() {
-    const { version, links } = await getLatestRelease();
+    const { version, links } = await getLatestRelease(true); // Force refresh
 
     return <DownloadBetaClient releaseVersion={version} links={links} />;
 }
